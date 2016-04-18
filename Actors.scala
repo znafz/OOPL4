@@ -38,7 +38,14 @@ class Fetcher extends Actor {
 	def receive = {
 		case IndexRequest(url) => {
 			// TODO: Get the raw page and send back to master
-			val src = scala.io.Source.fromURL(url).getLines.mkString("\n")
+			
+			try{
+				val src = scala.io.Source.fromURL(url).getLines.mkString("\n")
+				sender ! Some(RawPage(url, src))
+			} catch {
+				case e: java.io.IOException => sender ! None
+				//typically a binary file
+			}
 		}
 	}
 }
