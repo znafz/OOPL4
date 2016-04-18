@@ -33,13 +33,10 @@ case class QueryResult(fractionContaining: Double, numTotalPages: Int)
 //////////////////////////////////
 // Actors
 
-// TODO: write the Fetcher class	
 class Fetcher extends Actor {
 	def receive = {
 		case IndexRequest(url) => {
-			// TODO: Get the raw page and send back to master
-			
-			try{
+			try {
 				val src = scala.io.Source.fromURL(url).getLines.mkString("\n")
 				sender ! Some(RawPage(url, src))
 			} catch {
@@ -58,11 +55,10 @@ class Prompter extends Actor {
 	// To add logging of messages received,
 	//	 1. edit the application.conf file
 	//	 2. use the following line instead of def receive = {
-	def receive = akka.event.LoggingReceive {
+	//def receive = akka.event.LoggingReceive {
 	
-	//def receive = {
+	def receive = {
 		case QueryResult(fracContaining, numTotalPages) => {
-			println("Received QueryResult message...\n")
 			if (numTotalPages > 0) {
 				println((fracContaining*100.0) + "% of " + numTotalPages + " total pages matched.")
 			}
@@ -76,8 +72,7 @@ class Prompter extends Actor {
 }
 
 class Master extends Actor {
-	// TODO: Set maxPages lower for initial testing
-	val maxPages = 1000
+	val maxPages = 100
 
 	val urlsToIndex = scala.collection.mutable.HashSet[String]()
 	
@@ -87,30 +82,24 @@ class Master extends Actor {
 	val indexedUrls = scala.collection.mutable.HashSet[String]()
 	
 	def receive = {
-	 
-		// DONE (UNTESTED): handle StartIndexing message
 		case StartIndexing(urls) => {
-			println("Received StartIndexing(urls) message...\n")
-			urls foreach {
-				val fetcher = context.actorOf(Props[Fetcher])
-				fetcher ! IndexRequest(_)
+			urls foreach { (url: String) =>
+				context.actorOf(Props[Fetcher]) ! IndexRequest(url)
 			}
 			
 			val prompter = context.actorOf(Props[Prompter])
 			prompter ! QueryResult(0.0, 0)
 		}
 		
-		// DONE (UNTESTED): handle Query message
 		case Query(terms) => {
-		println("Received Query(terms) message...\n")
 			if (terms.size == 0) {
 				context.system.shutdown()
 			} else {
-				val count: Int = indexedPages.size
-				val filtered = indexedPages filter ( _ containsAll terms )
+				val count: Double = indexedPages.size
+				val filtered = indexedPages filter ( _.containsAll(terms) )
 				if (count > 0) {
-					val fraction: Double = filtered.size / count
-					sender ! QueryResult(fraction, count)
+					val fraction: Double = (filtered.size).toDouble / count.toDouble
+					sender ! QueryResult(fraction, count.toInt)
 				}
 				QueryResult(0.0, 0)
 			}
