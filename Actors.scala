@@ -110,8 +110,9 @@ class Master extends Actor {
 				val filtered = indexedPages filter ( _ containsAll terms )
 				if (count > 0) {
 					val fraction: Double = filtered.size / count
+					sender ! QueryResult(fraction, count)
 				}
-				sender ! QueryResult(fraction, count)
+				QueryResult(0.0, 0)
 			}
 		}
 	 
