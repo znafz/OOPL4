@@ -34,7 +34,14 @@ case class QueryResult(fractionContaining: Double, numTotalPages: Int)
 // Actors
 
 // TODO: write the Fetcher class	
-
+class Fetcher extends Actor {
+	def receive = {
+		case IndexRequest(url) => {
+			// TODO: Get the raw page and send back to master
+			val src = scala.io.Source.fromURL(url).getLines.mkString("\n")
+		}
+	}
+}
 
 // Prompter asks the user to enter queries,
 //	 then sends them along to the Master,
@@ -44,11 +51,12 @@ class Prompter extends Actor {
 	// To add logging of messages received,
 	//	 1. edit the application.conf file
 	//	 2. use the following line instead of def receive = {
-	//def receive = akka.event.LoggingReceive {
+	def receive = akka.event.LoggingReceive {
 	
-	def receive = {
+	//def receive = {
 		case QueryResult(fracContaining, numTotalPages) => {
-			if(numTotalPages > 0){
+			println("Received QueryResult message...\n")
+			if (numTotalPages > 0) {
 				println((fracContaining*100.0) + "% of " + numTotalPages + " total pages matched.")
 			}
 			
@@ -73,9 +81,30 @@ class Master extends Actor {
 	
 	def receive = {
 	 
-		// TODO: handle StartIndexing message
+		// DONE (UNTESTED): handle StartIndexing message
+		case StartIndexing(urls) => {
+			println("Received StartIndexing(urls) message...\n")
+			urls foreach {
+				val fetcher = context.actorOf(Props[Fetcher])
+				fetcher ! IndexRequest(_)
+			}
+			
+			val prompter = context.actorOf(Props[Fetcher])
+			prompter ! QueryResult(0.0, 0)
+		}
 		
-		// TODO: handle Query message
+		// DONE (UNTESTED): handle Query message
+		case Query(terms) => {
+		println("Received Query(terms) message...\n")
+			if (terms.size == 0) {
+				context.system.shutdown()
+			} else {
+				val count: Int = indexedPages.size
+				val filtered = indexedPages filter ( _ containsAll terms )
+				val fraction: Double = filtered.size / count
+				sender ! QueryResult(fraction, count)
+			}
+		}
 	 
 		case x: Option[_] => {
 			// See if we got a RawPage back
