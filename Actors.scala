@@ -89,7 +89,7 @@ class Master extends Actor {
 				fetcher ! IndexRequest(_)
 			}
 			
-			val prompter = context.actorOf(Props[Fetcher])
+			val prompter = context.actorOf(Props[Prompter])
 			prompter ! QueryResult(0.0, 0)
 		}
 		
@@ -101,7 +101,9 @@ class Master extends Actor {
 			} else {
 				val count: Int = indexedPages.size
 				val filtered = indexedPages filter ( _ containsAll terms )
-				val fraction: Double = filtered.size / count
+				if (count > 0) {
+					val fraction: Double = filtered.size / count
+				}
 				sender ! QueryResult(fraction, count)
 			}
 		}
